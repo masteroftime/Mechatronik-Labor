@@ -140,7 +140,7 @@ void DC_Control__25kHz()
 	if(Counter % 5000 == 0)
 	{
 		char UART_TX_DATA[40];
-		sprintf(UART_TX_DATA, "%5ld \n\n", (uint32_t)(CurrentFiltered*1000));
+		sprintf(UART_TX_DATA, "%5ld", (uint32_t)(CurrentFiltered*1000));
 		HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
 	}
 
