@@ -118,6 +118,8 @@ void PrintBytes(char* PrintBuffer, uint32_t PrintBufferSize ,void* Address, uint
   *
   * @retval None
   */
+
+char RxBuffer[50];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -160,7 +162,6 @@ int main(void)
   HAL_ADC_Start_IT(&hadc1);
   //HAL_ADC_Start(&hadc1);
 
-  HAL_UART_Receive_IT(&huart2,RxBuffer, sizeof(RxBuffer));
   HAL_UART_Receive_DMA(&huart2,RxBuffer, sizeof(RxBuffer));
 
   static char UART_TX_DATA[400];
