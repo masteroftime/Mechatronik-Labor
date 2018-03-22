@@ -48,6 +48,8 @@
 /* USER CODE BEGIN Includes */
 #include "fram.h"
 #include "sys.h"
+#include "stdio.h"
+#include "stdarg.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -67,6 +69,39 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN 0 */
 volatile uint16_t blinkDelay = 1000;
+
+size_t
+snprintfcat(
+    char* buf,
+    size_t bufSize,
+    char const* fmt,
+    ...)
+{
+    size_t result;
+    va_list args;
+    size_t len = strnlen( buf, bufSize);
+
+    va_start( args, fmt);
+    result = vsnprintf( buf + len, bufSize - len, fmt, args);
+    va_end( args);
+
+    return result + len;
+}
+
+void PrintBytes(char* PrintBuffer, uint32_t PrintBufferSize ,void* Address, uint32_t Length, char Delimiter)
+{
+
+	snprintf(PrintBuffer, PrintBufferSize, "HexDump %8p [%ld]\n", Address, Length);
+
+	char* Data = (char*)Address;
+
+	for(uint32_t i = 0; i < (Length>>2); i++)
+	{
+		snprintfcat(PrintBuffer,PrintBufferSize,"%02X%02X%02X%02X%c", Data[i],  Data[i+1],  Data[i+2],  Data[i+3], Delimiter);
+	}
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -100,29 +135,87 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
-  MX_TIM1_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
+  MX_TIM8_Init();
+  MX_TIM4_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
+  MX_TIM10_Init();
+  MX_TIM13_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2); //Start timer to to provide trigger for the adc conversion
+  //HAL_ADC_Start_IT(&hadc1);
+
   HAL_ADC_Start_IT(&hadc1);
+  //HAL_ADC_Start(&hadc1);
+
+
+
+
+  static char UART_TX_DATA[400];
+  uint32_t CycleCounter = 0;
+  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
+
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
+
+  HAL_TIM_PWM_Start_IT(&htim13,TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start_IT(&htim10,TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
+
+
+  //HAL_TIM_Encoder_Start(&htim1,TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim4,TIM_CHANNEL_ALL); //Encoder
+
 
   fram_init();
   char SystemID[SYSTEM_ID_STRING_SIZE];
   getSystemID(SystemID, sizeof(SystemID));
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	 // htim1.Instance->CCR1;
 
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
-	  HAL_Delay(blinkDelay); //Busy wait
+
+	  uint32_t Encoder4 = htim4.Instance->CNT;
+
+//	  sprintf(UART_TX_DATA, "Encoder %lu ", Encoder4);
+//	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
+//	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+//
+//	  uint32_t ADC_Value = HAL_ADC_GetValue(&hadc1);
+//	  sprintf(UART_TX_DATA, "ADC %lu\r\n", ADC_Value);
+//	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
+//	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+////	  PrintBytes(UART_TX_DATA,sizeof(UART_TX_DATA), htim1.Instance,sizeof(TIM_TypeDef),' ');
+////	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+
+
+
+
+
+	 // htim1->Instance->CCR1;
+
+	  HAL_Delay(10); //1ms Wait
+
+
+
+	  CycleCounter++;
   }
   /* USER CODE END 3 */
 

@@ -43,7 +43,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
-
+volatile uint32_t ADC1_value = 0;
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;
@@ -66,7 +66,7 @@ void MX_ADC1_Init(void)
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -138,7 +138,6 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 } 
 
 /* USER CODE BEGIN 1 */
-
 /**********************************************************************
  * It is important to keep all HAL callback functions reentrant:
  * 	- avoid using none reentrant functions in this function unless you make the execution atomic
@@ -152,7 +151,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	if(hadc->Instance == ADC1) //Check which ADC generated the interrupt
 	{
 		//TODO: Do something useful here
-		UNUSED(value); //Silence compiler warning about unused variable
+		ADC1_value = value;
 	}
 }
 /* USER CODE END 1 */

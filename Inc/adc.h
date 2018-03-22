@@ -62,7 +62,7 @@ extern void _Error_Handler(char *, int);
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+extern volatile uint32_t ADC1_value;
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
