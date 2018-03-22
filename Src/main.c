@@ -50,6 +50,7 @@
 #include "sys.h"
 #include "stdio.h"
 #include "stdarg.h"
+#include "DC_Control.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -179,6 +180,8 @@ int main(void)
   fram_init();
   char SystemID[SYSTEM_ID_STRING_SIZE];
   getSystemID(SystemID, sizeof(SystemID));
+
+  SetPosition(-0.7f);
 
   /* USER CODE END 2 */
 

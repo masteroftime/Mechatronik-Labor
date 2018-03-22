@@ -23,6 +23,7 @@ void SetPWM(float A, float B, float C, float D)
 
 #define sec (25000 * 1.0f)
 #define ms (sec / 1000)
+#define position_error 0.01f
 
 typedef uint8_t bool;
 
@@ -36,6 +37,18 @@ typedef enum{
 }Direction;
 
 
+float target_position = 0;
+
+void SetMotor(Direction direction, float Speed) {
+
+	SetPWM(direction == Left ? Speed : 0, direction == Right ? Speed : 0, 0, 0);
+	HAL_GPIO_WritePin(GPIOB, A_Enable, direction == Left || direction == Right);
+
+}
+
+void SetPosition(float target_pos) {
+	target_position = target_pos;
+}
 
 void DC_Control__25kHz()
 {
@@ -112,52 +125,53 @@ void DC_Control__25kHz()
 
 		case Operation:
 		{
-			static uint32_t Direction = 0; //Rechts
-			const uint32_t interval = 1*sec;
-
-			if((Time + 1) < interval) 	Time = Time + 1;
-			else 						Time = Time + 1 - interval;
-
-			float tau = 2*(Time *1.0f) / interval;
-			float offset = 8.0f/12;
-
-			if(Direction == 0 && EncoderPosition > 0.35){
-				Direction = 1;
-			}
-			else if (Direction == 1 && EncoderPosition < -0.35)
-			{
-				Direction = 0;
-			}
-			// Ab 9V beginnt der Linearschlitten zu fahren
-			if(Direction)
-			{
+			if(EncoderPosition > (target_position + position_error)) {
 				Speed = 0.5f;
 				direction = Left;
-				A = 0.5;//offset + tau / (1.0f-offset);
-				B = 0;
-			}
-			else{
+			} else if(EncoderPosition < (target_position - position_error)) {
 				Speed = 0.5f;
 				direction = Right;
-				A = 0;
-				B = 0.5;//offset + (tau-1) / (1.0f-offset);
+			} else {
+				Speed = 0;
+				direction = Undefined;
 			}
+
+
+
+//			if(Direction == 0 && EncoderPosition > 0.35){
+//				Direction = 1;
+//			}
+//			else if (Direction == 1 && EncoderPosition < -0.35)
+//			{
+//				Direction = 0;
+//			}
+//			// Ab 9V beginnt der Linearschlitten zu fahren
+//			if(Direction)
+//			{
+//				Speed = 0.5f;
+//				direction = Left;
+//				A = 0.5;//offset + tau / (1.0f-offset);
+//				B = 0;
+//			}
+//			else{
+//				Speed = 0.5f;
+//				direction = Right;
+//				A = 0;
+//				B = 0.5;//offset + (tau-1) / (1.0f-offset);
+//			}
 		}
 		break;
 
 	}
 
-	//A - left
-	//B - right
-	SetPWM(direction == Left ? Speed : 0, direction == Right ? Speed : 0, 0, 0);
-	HAL_GPIO_WritePin(GPIOB, MotorLeft, direction == Left || direction == Right);
-
-	if(Counter % 5000 == 0)
-	{
-		char UART_TX_DATA[40];
-		sprintf(UART_TX_DATA, "%5ld \nabc\n", (uint32_t)(CurrentFiltered*1000));
-		HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
-	}
+	SetMotor(direction, Speed);
+//
+//	if(Counter % 5000 == 0)
+//	{
+//		char UART_TX_DATA[40];
+//		sprintf(UART_TX_DATA, "%5ld \nabc\n", (uint32_t)(CurrentFiltered*1000));
+//		HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+//	}
 
 }
 
