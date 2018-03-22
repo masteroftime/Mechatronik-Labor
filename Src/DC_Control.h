@@ -26,6 +26,6 @@
 extern void DC_Control__25kHz();
 extern void DC_Control__1kHz();
 
-void SetPosition(float);
+void SetPosition(float target_pos, float speed);
 
 #endif /* DC_CONTROL_H_ */

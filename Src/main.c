@@ -89,6 +89,14 @@ snprintfcat(
     return result + len;
 }
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+	if(huart == &huart2)
+	{
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
+	}
+}
+
 void PrintBytes(char* PrintBuffer, uint32_t PrintBufferSize ,void* Address, uint32_t Length, char Delimiter)
 {
 
@@ -152,8 +160,8 @@ int main(void)
   HAL_ADC_Start_IT(&hadc1);
   //HAL_ADC_Start(&hadc1);
 
-
-
+  HAL_UART_Receive_IT(&huart2,RxBuffer, sizeof(RxBuffer));
+  HAL_UART_Receive_DMA(&huart2,RxBuffer, sizeof(RxBuffer));
 
   static char UART_TX_DATA[400];
   uint32_t CycleCounter = 0;
@@ -181,7 +189,7 @@ int main(void)
   char SystemID[SYSTEM_ID_STRING_SIZE];
   getSystemID(SystemID, sizeof(SystemID));
 
-  SetPosition(-0.7f);
+  SetPosition(-0.7f, 0.8f);
 
   /* USER CODE END 2 */
 
@@ -191,15 +199,19 @@ int main(void)
   {
 	 // htim1.Instance->CCR1;
 
+
+
+
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
 
 	  uint32_t Encoder4 = htim4.Instance->CNT;
 
-//	  sprintf(UART_TX_DATA, "Encoder %lu ", Encoder4);
-//	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
-//	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+	  sprintf(UART_TX_DATA, "Encoder %lu ", Encoder4);
+	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
+	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+
 //
 //	  uint32_t ADC_Value = HAL_ADC_GetValue(&hadc1);
 //	  sprintf(UART_TX_DATA, "ADC %lu\r\n", ADC_Value);

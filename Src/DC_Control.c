@@ -33,11 +33,12 @@ typedef enum
 }Mode;
 
 typedef enum{
-	Undefined, Left, Right
+	Neutral, Left, Right
 }Direction;
 
 
 float target_position = 0;
+float target_speed = 0;
 
 void SetMotor(Direction direction, float Speed) {
 
@@ -46,8 +47,17 @@ void SetMotor(Direction direction, float Speed) {
 
 }
 
-void SetPosition(float target_pos) {
-	target_position = target_pos;
+void SetPosition(float target_pos, float speed) {
+
+	if(target_pos > 1) 			target_position = 1;
+	else if(target_pos < -1) 	target_position = -1;
+	else 						target_position = target_pos;
+
+
+	if(speed > 1) 		target_speed = 1;
+	else if(speed < 0) 	target_speed = 0;
+	else 				target_speed = speed;
+
 }
 
 void DC_Control__25kHz()
@@ -64,21 +74,26 @@ void DC_Control__25kHz()
 	volatile static int16_t EncoderRight;
 	static uint32_t 		T_state;
 
+	//PARAMETERS
+	float Tau 		= 20*ms;
+	float ObstacleCurrent = 0.6f;
+
+
 	//INPUTS
 	float Current 	= (ADC1_value / 4095.0f * 3.3f) / 1.5;
-	float tau 		= 20*ms;
+
 	float dt 		= 1;
-	float newPart 	= dt / tau;
+	float newPart 	= dt / Tau;
 
 	CurrentFiltered 			= CurrentFiltered * (1-newPart) + newPart * Current; //Tiefpass 1 Ordnung
-	bool CurrentPeakDetected 	= CurrentFiltered > 0.6;
+	bool CurrentPeakDetected 	= CurrentFiltered > ObstacleCurrent;
 
 	int16_t EncoderRAW 			= (int16_t)htim4.Instance->CNT;
 	float EncoderPosition  		= state == Operation ? ((EncoderRAW - EncoderOffset) * 2.0f / EncoderWidth) : 0; //-0.5 ... 0.5 wenn am Beginn mittig ausgerichtet
 
 	//OUTPUTS
 	float A, B = 0;
-	Direction direction = Undefined;
+	Direction direction = Neutral;
 	float Speed = 0;
 
 	Counter++;
@@ -126,14 +141,14 @@ void DC_Control__25kHz()
 		case Operation:
 		{
 			if(EncoderPosition > (target_position + position_error)) {
-				Speed = 0.5f;
+				Speed = target_speed;
 				direction = Left;
 			} else if(EncoderPosition < (target_position - position_error)) {
-				Speed = 0.5f;
+				Speed = target_speed;
 				direction = Right;
 			} else {
 				Speed = 0;
-				direction = Undefined;
+				direction = Neutral;
 			}
 
 
