@@ -31,6 +31,9 @@ typedef enum
 	Init1, Init2, Operation
 }Mode;
 
+typedef enum{
+	Undefined, Left, Right
+}Direction;
 
 
 
@@ -62,6 +65,8 @@ void DC_Control__25kHz()
 
 	//OUTPUTS
 	float A, B = 0;
+	Direction direction = Undefined;
+	float Speed = 0;
 
 	Counter++;
 
@@ -74,6 +79,8 @@ void DC_Control__25kHz()
 
 		case Init1:
 		{
+			Speed = 0.5f;
+			direction = Left;
 			A = 0.5f;
 			B = 0;
 
@@ -88,6 +95,8 @@ void DC_Control__25kHz()
 
 		case Init2:
 		{
+			Speed = 0.5f;
+			direction = Right;
 			A = 0;
 			B = 0.5f;
 
@@ -122,10 +131,14 @@ void DC_Control__25kHz()
 			// Ab 9V beginnt der Linearschlitten zu fahren
 			if(Direction)
 			{
+				Speed = 0.5f;
+				direction = Left;
 				A = 0.5;//offset + tau / (1.0f-offset);
 				B = 0;
 			}
 			else{
+				Speed = 0.5f;
+				direction = Right;
 				A = 0;
 				B = 0.5;//offset + (tau-1) / (1.0f-offset);
 			}
@@ -134,8 +147,10 @@ void DC_Control__25kHz()
 
 	}
 
-	SetPWM(A, B, 0, 0);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, CurrentPeakDetected);
+	//A - left
+	//B - right
+	SetPWM(direction == Left ? Speed : 0, direction == Right ? Speed : 0, 0, 0);
+	HAL_GPIO_WritePin(GPIOB, MotorLeft, direction == Left || direction == Right);
 
 	if(Counter % 5000 == 0)
 	{
@@ -144,14 +159,7 @@ void DC_Control__25kHz()
 		HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
 	}
 
-
-
 }
-
-
-
-
-
 
 
 void DC_Control__1kHz()

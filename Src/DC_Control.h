@@ -20,6 +20,9 @@
 #include "usart.h"
 #include "gpio.h"
 
+#define MotorLeft 	GPIO_PIN_12
+#define MotorRight 	GPIO_PIN_13
+
 extern void DC_Control__25kHz();
 extern void DC_Control__1kHz();
 
