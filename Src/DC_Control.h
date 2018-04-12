@@ -26,6 +26,28 @@
 extern void DC_Control__25kHz();
 extern void DC_Control__1kHz();
 
-void SetPosition(float target_pos, float speed);
+typedef struct
+{
+	uint32_t StartData;
+	float PositionSetpoint;
+	float SpeedSetpoint;
+	float LorenzPositionSetpoint;
+}
+ControlFrame;
+
+typedef struct
+{
+	uint32_t StartData;
+	float CurrentPosition;
+	float CurrentSpeed;
+	float LorenzPosition;
+
+}StatusFrame;
+
+ControlFrame InputControlFrame;
+StatusFrame  OutputStatusFrame;
+
+void SetLorenzAktuator(float A, float B);
+void SetPosition(float target_pos, float speed, float lorenzInput);
 
 #endif /* DC_CONTROL_H_ */

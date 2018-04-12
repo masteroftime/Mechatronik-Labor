@@ -89,13 +89,13 @@ snprintfcat(
     return result + len;
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-	if(huart == &huart2)
-	{
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-	}
-}
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+//	if(huart == &huart2)
+//	{
+//		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
+//		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
+//	}
+//}
 
 void PrintBytes(char* PrintBuffer, uint32_t PrintBufferSize ,void* Address, uint32_t Length, char Delimiter)
 {
@@ -111,6 +111,12 @@ void PrintBytes(char* PrintBuffer, uint32_t PrintBufferSize ,void* Address, uint
 }
 
 
+#define BufferSize sizeof(ControlFrame)
+#define BufferCount 2
+uint32_t BufferIndex = 0;
+uint32_t ReadIndex = 0;
+unsigned char UART_RX_DATA[BufferCount][BufferSize] = {0};
+
 /* USER CODE END 0 */
 
 /**
@@ -118,8 +124,6 @@ void PrintBytes(char* PrintBuffer, uint32_t PrintBufferSize ,void* Address, uint
   *
   * @retval None
   */
-
-char RxBuffer[50];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -162,9 +166,12 @@ int main(void)
   HAL_ADC_Start_IT(&hadc1);
   //HAL_ADC_Start(&hadc1);
 
-  HAL_UART_Receive_DMA(&huart2,RxBuffer, sizeof(RxBuffer));
 
-  static char UART_TX_DATA[400];
+  HAL_UART_Receive_DMA(&huart2,UART_RX_DATA[BufferIndex], sizeof(UART_RX_DATA[0]));
+  ReadIndex = BufferIndex;
+  BufferIndex = (BufferIndex + 1) % BufferCount;
+
+
   uint32_t CycleCounter = 0;
   HAL_TIM_Base_Start(&htim1);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
@@ -190,7 +197,7 @@ int main(void)
   char SystemID[SYSTEM_ID_STRING_SIZE];
   getSystemID(SystemID, sizeof(SystemID));
 
-  SetPosition(-0.7f, 0.8f);
+  SetPosition(-0.7f, 0.8f, 0.0f);
 
   /* USER CODE END 2 */
 
@@ -201,17 +208,19 @@ int main(void)
 	 // htim1.Instance->CCR1;
 
 
-
-
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
 
 	  uint32_t Encoder4 = htim4.Instance->CNT;
 
-	  sprintf(UART_TX_DATA, "Encoder %lu ", Encoder4);
-	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
-	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+
+//Auskommentiert 11.4.18
+//	  sprintf(UART_TX_DATA, "Encoder %lu ", Encoder4);
+//	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
+//	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+
+
 
 //
 //	  uint32_t ADC_Value = HAL_ADC_GetValue(&hadc1);
@@ -221,11 +230,6 @@ int main(void)
 ////	  PrintBytes(UART_TX_DATA,sizeof(UART_TX_DATA), htim1.Instance,sizeof(TIM_TypeDef),' ');
 ////	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
 
-
-
-
-
-	 // htim1->Instance->CCR1;
 
 	  HAL_Delay(10); //1ms Wait
 
@@ -303,6 +307,55 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+void SendDataViaUART(void* Buffer, uint32_t length)
+{
+
+}
+
+void UART_DataReceived()
+{
+	uint32_t Data = UART_RX_DATA[ReadIndex][0]<<0 | UART_RX_DATA[ReadIndex][1]<<8 | UART_RX_DATA[ReadIndex][2]<<16 | UART_RX_DATA[ReadIndex][3]<<24;
+	if(Data == 0x12345678)
+	{
+		memcpy(&InputControlFrame, UART_RX_DATA[ReadIndex],sizeof(ControlFrame));
+
+		 SetPosition(InputControlFrame.PositionSetpoint,InputControlFrame.SpeedSetpoint, InputControlFrame.LorenzPositionSetpoint );
+
+		 //SetLorenzAktuator(InputControlFrame.LorenzPositionSetpoint,1.0f-InputControlFrame.LorenzPositionSetpoint);
+	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
+{
+	if(huart->Instance == huart2.Instance)
+	{
+		HAL_UART_Receive_DMA(&huart2,UART_RX_DATA[BufferIndex], sizeof(UART_RX_DATA[0]));
+		ReadIndex = BufferIndex;
+		BufferIndex = (BufferIndex + 1) % BufferCount;
+
+		UART_DataReceived();
+
+		//HAL_UART_Transmit_DMA(&huart2, UART_RX_DATA[ReadIndex], sizeof(UART_RX_DATA[0]));
+
+		//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+		//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+		//HAL_UART_Transmit_DMA(&huart2, UART_RX_DATA, strlen(UART_RX_DATA));
+
+	}
+
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart)
+{
+	if(huart->Instance == huart2.Instance)
+	{
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+	}
+
+}
 
 /* USER CODE END 4 */
 

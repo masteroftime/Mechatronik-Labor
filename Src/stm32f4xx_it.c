@@ -48,6 +48,8 @@ extern TIM_HandleTypeDef htim8;
 extern TIM_HandleTypeDef htim10;
 extern TIM_HandleTypeDef htim13;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+extern UART_HandleTypeDef huart2;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
@@ -81,8 +83,6 @@ void SysTick_Handler(void)
 void DMA1_Stream5_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Stream5_IRQn 0 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
   /* USER CODE END DMA1_Stream5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart2_rx);
   /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
@@ -98,7 +98,7 @@ void DMA1_Stream6_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Stream6_IRQn 0 */
 
   /* USER CODE END DMA1_Stream6_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_i2c1_tx);
+  HAL_DMA_IRQHandler(&hdma_usart2_tx);
   /* USER CODE BEGIN DMA1_Stream6_IRQn 1 */
 
   /* USER CODE END DMA1_Stream6_IRQn 1 */
@@ -165,6 +165,41 @@ void I2C1_ER_IRQHandler(void)
 }
 
 /**
+* @brief This function handles USART2 global interrupt.
+*/
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+
+//ADDED 11.4.18 - sollte nur einmal auslösen, löst aber immer aus
+//	 uint32_t isrflags   = READ_REG(huart2.Instance->SR);
+//	  uint32_t cr1its     = READ_REG(huart2.Instance->CR1);
+//	   uint32_t errorflags = 0x00U;
+//	   uint32_t dmarequest = 0x00U;
+//
+//	  /* If no error occurs */
+//	  errorflags = (isrflags & (uint32_t)(USART_SR_PE | USART_SR_FE | USART_SR_ORE | USART_SR_NE));
+//	  if(errorflags == RESET)
+//	  {
+//	    /* UART in mode Receiver -------------------------------------------------*/
+//	    if(((isrflags & USART_SR_IDLE) != RESET))
+//	    {
+//
+//	    	CLEAR_BIT(huart2.Instance->CR1, USART_CR1_IDLEIE); //Clear Flag
+//	    	CLEAR_BIT(huart2.Instance->SR, USART_SR_IDLE); //Clear Flag
+//	    	SET_BIT(huart2.Instance->CR1, USART_CR1_IDLEIE); //Clear Flag
+//	    	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+//	    	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+//	    }
+//	  }
+  /* USER CODE END USART2_IRQn 0 */
+  HAL_UART_IRQHandler(&huart2);
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
+
+/**
 * @brief This function handles EXTI line[15:10] interrupts.
 */
 void EXTI15_10_IRQHandler(void)
@@ -195,6 +230,20 @@ void TIM8_UP_TIM13_IRQHandler(void)
 
   DC_Control__25kHz();
   /* USER CODE END TIM8_UP_TIM13_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA1 stream7 global interrupt.
+*/
+void DMA1_Stream7_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Stream7_IRQn 0 */
+
+  /* USER CODE END DMA1_Stream7_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_i2c1_tx);
+  /* USER CODE BEGIN DMA1_Stream7_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream7_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

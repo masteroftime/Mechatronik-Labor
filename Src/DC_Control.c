@@ -10,14 +10,19 @@
 /* USER CODE END Includes */
 
 
-void SetPWM(float A, float B, float C, float D)
+void SetPWM_ChannelA(float A, float B)
 {
 	uint16_t ARR_value = htim1.Instance->ARR;
-	 htim1.Instance->CCR1 = A * ARR_value;
-	 htim1.Instance->CCR2 = B * ARR_value;
+	htim1.Instance->CCR1 = A * ARR_value;
+	htim1.Instance->CCR2 = B * ARR_value;
+}
+
+void SetPWM_ChannelB(float C, float D){
+	uint16_t ARR_value = htim1.Instance->ARR;
+
 	 htim1.Instance->CCR3 = C * ARR_value;
 	 htim1.Instance->CCR4 = D * ARR_value;
-}
+	}
 
 
 
@@ -39,15 +44,21 @@ typedef enum{
 
 float target_position = 0;
 float target_speed = 0;
+float LorenzSetpoint = 0;
 
 void SetMotor(Direction direction, float Speed) {
 
-	SetPWM(direction == Left ? Speed : 0, direction == Right ? Speed : 0, 0, 0);
-	HAL_GPIO_WritePin(GPIOB, A_Enable, direction == Left || direction == Right);
+	SetPWM_ChannelA(direction == Left ? Speed : 0, direction == Right ? Speed : 0 );
+	HAL_GPIO_WritePin(GPIOB, A_Enable, 1 &&(direction == Left || direction == Right));
 
 }
 
-void SetPosition(float target_pos, float speed) {
+void SetLorenzAktuator(float A, float B){
+	SetPWM_ChannelB(A, B);
+	HAL_GPIO_WritePin(GPIOB, B_Enable, 1);
+}
+
+void SetPosition(float target_pos, float speed, float lorenzInput) {
 
 	if(target_pos > 1) 			target_position = 1;
 	else if(target_pos < -1) 	target_position = -1;
@@ -57,6 +68,8 @@ void SetPosition(float target_pos, float speed) {
 	if(speed > 1) 		target_speed = 1;
 	else if(speed < 0) 	target_speed = 0;
 	else 				target_speed = speed;
+
+	LorenzSetpoint = lorenzInput;
 
 }
 
@@ -74,6 +87,8 @@ void DC_Control__25kHz()
 	volatile static int16_t EncoderRight;
 	static uint32_t 		T_state;
 
+	static uint32_t 		T_UART;
+	uint32_t UART_Interval 	= 10*ms;
 	//PARAMETERS
 	float Tau 		= 20*ms;
 	float ObstacleCurrent = 0.6f;
@@ -98,6 +113,10 @@ void DC_Control__25kHz()
 
 	Counter++;
 
+	bool UART_Send  = 0;
+	if(T_UART < UART_Interval) 	{ T_UART = T_UART + dt; 				UART_Send = 0; }
+	else 						{ T_UART = T_UART + dt - UART_Interval; UART_Send = 1; }
+
 	if(m_state != state) T_state = 0;
 	else 				 T_state = T_state + 1;
 	m_state = state;
@@ -117,7 +136,6 @@ void DC_Control__25kHz()
 				EncoderLeft = EncoderRAW;
 				state = Init2;
 			}
-
 		}
 		break;
 
@@ -151,8 +169,6 @@ void DC_Control__25kHz()
 				direction = Neutral;
 			}
 
-
-
 //			if(Direction == 0 && EncoderPosition > 0.35){
 //				Direction = 1;
 //			}
@@ -180,6 +196,20 @@ void DC_Control__25kHz()
 	}
 
 	SetMotor(direction, Speed);
+
+	float LorenzVoltage = 7.0f/20.0f*LorenzSetpoint;
+	SetLorenzAktuator(LorenzVoltage, 1.0f-LorenzVoltage);
+
+
+	if(UART_Send)
+	{
+		OutputStatusFrame.LorenzPosition = 0;
+		OutputStatusFrame.CurrentSpeed = 0;
+		OutputStatusFrame.CurrentPosition = EncoderPosition;
+		OutputStatusFrame.StartData = 0x12345678;
+		HAL_UART_Transmit_DMA(&huart2, &OutputStatusFrame, sizeof(OutputStatusFrame));
+	}
+
 //
 //	if(Counter % 5000 == 0)
 //	{
