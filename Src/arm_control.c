@@ -34,7 +34,7 @@ typedef uint8_t bool;
 
 typedef enum
 {
-	Accelerate, Break, Stop
+	Weight, Prepare, Accelerate, Break, Stop
 }Mode;
 
 typedef enum{
@@ -45,6 +45,8 @@ typedef enum{
 float target_position = 0.25f;
 float target_speed = 0;
 
+Mode state = Accelerate;
+
 void SetMotor(Direction direction, float Speed) {
 
 	SetPWM_ChannelA(direction == Forward ? Speed : 0, direction == Backward ? Speed : 0 );
@@ -52,13 +54,27 @@ void SetMotor(Direction direction, float Speed) {
 
 }
 
+void shoot(float velocity, float angle) {
+	if(velocity > 1) velocity = 1.0f;
+		else if(velocity < 0) velocity = 0;
 
+	if(angle > 0.25f) angle = 0.25f;
+		else if(angle < 0) angle = 0;
+
+	target_position = angle;
+	target_speed = velocity;
+
+	state = Prepare;
+}
+
+void weight_position() {
+	state = Weight;
+}
 
 void arm_control__25kHz()
 {
 	//STATES
 	static Mode				prev_state = Accelerate;	// previous state, used to detect state changes
-	static Mode 			state = Accelerate;			// current state
 	static uint32_t 		T_state;					// time spent in current state
 
 	static int16_t 			EncoderOffset;
@@ -70,6 +86,10 @@ void arm_control__25kHz()
 
 
 	//INPUTS
+	int16_t EncoderRAW 			= (int16_t)htim4.Instance->CNT;
+	//TODO: Initialize and correctly normalize encoder position
+	float EncoderPosition  		= ((float)EncoderRAW)/8000;
+
 
 	//OUTPUTS
 	Direction direction = Neutral;
@@ -90,7 +110,27 @@ void arm_control__25kHz()
 
 	switch (state)
 	{
+		/*
+		 * In the prepare state the arm is slowly moved down. Then it goes into the accelerate state
+		 */
+		case Prepare:
+		{
+			if(EncoderPosition > -0.125f) {
+				Speed = 0.3;
+				direction = Backward;
+			} else if(EncoderPosition < -0.150f){
+				Speed = 0.3;
+				direction = Forward;
+			} else {
+				state = Accelerate;
+			}
+		}
+		break;
 
+		/*
+		 * In the accelerate state the arm is accelerated to the target velocity.
+		 * If the shooting position is reached it transitions into the break state.
+		 */
 		case Accelerate:
 		{
 			if(EncoderPosition < target_position) {
@@ -105,6 +145,9 @@ void arm_control__25kHz()
 		}
 		break;
 
+		/*
+		 * Breaks down the arm as fast as possible. Then transitions into the stop state.
+		 */
 		case Break:
 		{
 			if(EncoderPosition > (target_position - 0.1f)) {

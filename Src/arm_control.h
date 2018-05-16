@@ -23,8 +23,13 @@
 #define A_Enable 	GPIO_PIN_12
 #define B_Enable 	GPIO_PIN_13
 
-extern void arm_control__25kHz();
-extern void arm_control__1kHz();
+void arm_control__25kHz();
+void arm_control__1kHz();
+
+//void shoot();
+void shoot(float, float);
+void weight_position();
+uint8_t weight_ready();
 
 
 #endif /* ARM_CONTROL_H_ */
