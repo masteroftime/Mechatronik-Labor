@@ -90,8 +90,8 @@ void DC_Control__25kHz()
 	static uint32_t 		T_UART;
 	uint32_t UART_Interval 	= 10*ms;
 	//PARAMETERS
-	float Tau 		= 20*ms;
-	float ObstacleCurrent = 0.6f;
+	float Tau 				= 20*ms;
+	float ObstacleCurrent 	= 0.6f;
 
 
 	//INPUTS
