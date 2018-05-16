@@ -36,7 +36,7 @@
 #include "stm32f4xx_it.h"
 
 /* USER CODE BEGIN 0 */
-#include "DC_Control.h"
+#include "arm_control.h"
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -130,7 +130,7 @@ void TIM1_UP_TIM10_IRQHandler(void)
   HAL_TIM_IRQHandler(&htim10);
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
 
-  DC_Control__1kHz();
+  arm_control__1kHz();
 
   	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
@@ -228,7 +228,7 @@ void TIM8_UP_TIM13_IRQHandler(void)
 
 
 
-  DC_Control__25kHz();
+  arm_control__25kHz();
   /* USER CODE END TIM8_UP_TIM13_IRQn 1 */
 }
 
