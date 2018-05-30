@@ -8,6 +8,7 @@
 #ifndef ARM_CONTROL_H_
 #define ARM_CONTROL_H_
 
+#include "System.h"
 #include "fram.h"
 #include "sys.h"
 #include "stdio.h"
@@ -30,6 +31,9 @@ void arm_control__1kHz();
 void shoot(float, float);
 void weight_position();
 uint8_t weight_ready();
+
+
+
 
 
 #endif /* ARM_CONTROL_H_ */

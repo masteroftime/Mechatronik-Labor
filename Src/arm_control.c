@@ -7,8 +7,10 @@
 
 /* USER CODE BEGIN Includes */
 #include "arm_control.h"
+#include "DMS.h"
 /* USER CODE END Includes */
 
+DataFrame  OutputDataFrame;
 
 void SetPWM_ChannelA(float A, float B)
 {
@@ -22,12 +24,9 @@ void SetPWM_ChannelB(float C, float D){
 
 	 htim1.Instance->CCR3 = C * ARR_value;
 	 htim1.Instance->CCR4 = D * ARR_value;
-	}
+}
 
 
-
-#define sec (25000 * 1.0f)
-#define ms (sec / 1000)
 #define position_error 0.01f
 
 typedef uint8_t bool;
@@ -81,6 +80,8 @@ void arm_control__25kHz()
 
 	static uint32_t 		T_UART;
 	uint32_t UART_Interval 	= 10*ms;
+	const uint32_t 			T = 1;
+
 
 	//PARAMETERS
 
@@ -159,6 +160,7 @@ void arm_control__25kHz()
 				direction = Neutral;
 				state = Stop;
 			}
+			break;
 		}
 
 		case Stop:
@@ -172,14 +174,14 @@ void arm_control__25kHz()
 	SetMotor(direction, Speed);
 
 
-	/*if(UART_Send)
-	{
-		OutputStatusFrame.LorenzPosition = 0;
-		OutputStatusFrame.CurrentSpeed = 0;
-		OutputStatusFrame.CurrentPosition = EncoderPosition;
-		OutputStatusFrame.StartData = 0x12345678;
-		HAL_UART_Transmit_DMA(&huart2, &OutputStatusFrame, sizeof(OutputStatusFrame));
-	}*/
+	//SetPWM_ChannelB(DMSPeriod/65535.0f,0);
+
+
+
+
+
+
+
 
 }
 

@@ -62,6 +62,7 @@
 
 /* USER CODE BEGIN Private defines */
 extern volatile uint16_t blinkDelay;
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

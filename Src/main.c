@@ -1,3 +1,4 @@
+
 /**
   ******************************************************************************
   * @file           : main.c
@@ -117,6 +118,9 @@ uint32_t BufferIndex = 0;
 uint32_t ReadIndex = 0;
 unsigned char UART_RX_DATA[BufferCount][BufferSize] = {0};
 
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -148,17 +152,23 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+
+  //Init UART DMA
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
-  MX_TIM8_Init();
   MX_TIM4_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
   MX_TIM10_Init();
   MX_TIM13_Init();
   MX_ADC1_Init();
+  MX_TIM8_Init();
+
+
+
+
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2); //Start timer to to provide trigger for the adc conversion
   //HAL_ADC_Start_IT(&hadc1);
@@ -171,25 +181,38 @@ int main(void)
   ReadIndex = BufferIndex;
   BufferIndex = (BufferIndex + 1) % BufferCount;
 
-
   uint32_t CycleCounter = 0;
+
+  //PWM output Half Bridge Driver
   HAL_TIM_Base_Start(&htim1);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
 
+  //PWM Output Reserve
   HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
 
+
+  //Timer for 25kHz interrupt signal
   HAL_TIM_PWM_Start_IT(&htim13,TIM_CHANNEL_1);
+
+  //Timer for 1kHz interrupt signal
   HAL_TIM_PWM_Start_IT(&htim10,TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
 
 
-  //HAL_TIM_Encoder_Start(&htim1,TIM_CHANNEL_ALL);
+  //PWM input period capture
+  HAL_TIM_Base_Start(&htim8);
+  HAL_TIM_IC_Start_IT(&htim8,TIM_CHANNEL_1);
+  HAL_TIM_IC_Start(&htim8,TIM_CHANNEL_2);
+
+
+ unsigned long cntvalue = __HAL_TIM_GET_COUNTER(&htim2);
+
+  //Encoder Initialize
   HAL_TIM_Encoder_Start(&htim4,TIM_CHANNEL_ALL); //Encoder
 
 
@@ -229,6 +252,9 @@ int main(void)
 //	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
 ////	  PrintBytes(UART_TX_DATA,sizeof(UART_TX_DATA), htim1.Instance,sizeof(TIM_TypeDef),' ');
 ////	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
+
+
+	 unsigned long PWMInputCounterValue = __HAL_TIM_GetCounter(&htim8);    //read TIM2 counter value
 
 
 	  HAL_Delay(10); //1ms Wait

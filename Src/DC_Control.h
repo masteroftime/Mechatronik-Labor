@@ -19,6 +19,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+#include "System.h"
 
 #define A_Enable 	GPIO_PIN_12
 #define B_Enable 	GPIO_PIN_13
