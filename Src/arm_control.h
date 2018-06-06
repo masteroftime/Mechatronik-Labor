@@ -24,13 +24,41 @@
 #define A_Enable 	GPIO_PIN_12
 #define B_Enable 	GPIO_PIN_13
 
-void arm_control__25kHz();
+//TYPES
+
+typedef struct
+{
+
+}ARM_IN;
+
+typedef struct
+{
+	i32 EncoderPosition;
+	float EncoderPostionFloat;
+	float EncoderSpeed;
+	float EncoderSpeedFiltered;
+	float EncoderSpeed10msFiltered;
+	float DeltaTime;
+	ui32 Time2;
+	float EncoderSpeedTime;
+}ARM_OUT;
+
+typedef struct
+{
+	ARM_IN In;
+	ARM_OUT Out;
+}ARM_DATA;
+
+
+//Functions, Variables
+
+void arm_control__25kHz(const unsigned long T, ARM_DATA* Data);
 void arm_control__1kHz();
 
 //void shoot();
 void shoot(float, float);
-void weight_position();
 uint8_t weight_ready();
+
 
 
 

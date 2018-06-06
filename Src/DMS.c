@@ -23,9 +23,8 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 }
 
 
-DataFrame  OutputDataFrame;
 
-DMS_OUT DMS_Update(uint32_t T, DMS_IN IN)
+void DMS_Update(uint32_t T, DMS_DATA* Data)
 {
 	DMS_OUT OUT;
 	//Waage
@@ -37,16 +36,8 @@ DMS_OUT DMS_Update(uint32_t T, DMS_IN IN)
 
 	const float TauTara = 500*ms;
 
+	Data->Out.DMSFiltered = DMSFiltered;
+	Data->Out.DMSOnTime = DMSDuty;
 
-	if(IN.UART_Send)
-	{
-		OutputDataFrame.StartData = 0x12345678;
-		OutputDataFrame.WaageA = DMSPeriod;
-		OutputDataFrame.WaageB = DMSFiltered;
-		OutputDataFrame.WaageC = DMSDuty;
-		HAL_UART_Transmit_DMA(&huart2, &OutputDataFrame, sizeof(OutputDataFrame));
-	}
-
-	return OUT;
 }
 

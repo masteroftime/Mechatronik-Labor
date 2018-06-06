@@ -152,8 +152,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-
-  //Init UART DMA
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
@@ -165,10 +163,6 @@ int main(void)
   MX_TIM13_Init();
   MX_ADC1_Init();
   MX_TIM8_Init();
-
-
-
-
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2); //Start timer to to provide trigger for the adc conversion
   //HAL_ADC_Start_IT(&hadc1);
@@ -191,10 +185,9 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
 
   //PWM Output Reserve
-  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_IC_Start(&htim3,TIM_CHANNEL_1);
+  HAL_TIM_IC_Start(&htim3,TIM_CHANNEL_2);
 
 
   //Timer for 25kHz interrupt signal

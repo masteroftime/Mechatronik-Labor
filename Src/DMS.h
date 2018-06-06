@@ -21,24 +21,18 @@ typedef struct
 
 typedef struct
 {
-
+	float DMSFiltered;
+	float DMSOnTime;
 }DMS_OUT;
-
-
 
 typedef struct
 {
-	uint32_t StartData;
-	float WaageA;
-	float WaageB;
-	float WaageC;
-	float WaageD;
-}
-DataFrame;
+	DMS_IN In;
+	DMS_OUT Out;
+}DMS_DATA;
 
-DataFrame  OutputDataFrame;
 
-DMS_OUT DMS_Update(uint32_t T, DMS_IN IN);
+void DMS_Update(uint32_t T, DMS_DATA* Data);
 
 extern unsigned long DMSPeriod;
 extern unsigned long DMSDuty;

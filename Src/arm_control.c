@@ -33,7 +33,7 @@ typedef uint8_t bool;
 
 typedef enum
 {
-	Weight, Prepare, Accelerate, Break, Stop
+	Init, Prepare, Accelerate, Break, Stop
 }Mode;
 
 typedef enum{
@@ -44,7 +44,11 @@ typedef enum{
 float target_position = 0.25f;
 float target_speed = 0;
 
-Mode state = Accelerate;
+Mode state = Init;
+
+/*ui16 time1_overflow = 0;
+ui16 time2_overflow = 0;
+ui8 times_unchanged = 1;*/
 
 void SetMotor(Direction direction, float Speed) {
 
@@ -66,39 +70,103 @@ void shoot(float velocity, float angle) {
 	state = Prepare;
 }
 
-void weight_position() {
-	state = Weight;
-}
 
-void arm_control__25kHz()
+void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 {
 	//STATES
 	static Mode				prev_state = Accelerate;	// previous state, used to detect state changes
 	static uint32_t 		T_state;					// time spent in current state
 
-	static int16_t 			EncoderOffset;
 
-	static uint32_t 		T_UART;
-	uint32_t UART_Interval 	= 10*ms;
-	const uint32_t 			T = 1;
+	//Encoder Readout + Speed Calculation
+	const uint16_t 	Period 				= 8640;
+	static int32_t  EncoderAbsPosition 	= 0;	//Absolute Position Value in Steps - Can Handle multiple rotations
+	int32_t 		EncoderDelta 		= 0;	//Difference Steps since last cycle
+
+	static uint16_t EncoderRAW 	= 0; 			//This Cycle Register Value
+	uint16_t mEncoderRAW 		= EncoderRAW; 	//Last Cycle Register Value
+	EncoderRAW 					= htim4.Instance->CNT;
+
+	int16_t Delta 				= EncoderRAW - mEncoderRAW;	//Register Differnce since last Cycle
+	if		(Delta >  (int32_t)Period/2)	{ EncoderDelta = Delta - Period; EncoderAbsPosition += EncoderDelta; }
+	else if (Delta < -(int32_t)Period/2)	{ EncoderDelta = Delta + Period; EncoderAbsPosition += EncoderDelta; }
+	else 									{ EncoderDelta = Delta; 		 EncoderAbsPosition += EncoderDelta; }
+
+	float EncoderPosition  		= (EncoderAbsPosition*1.0f)/Period;		//in Rotations
+	float EncoderSpeed 			= EncoderDelta*1.0f*sec / (Period*T); //in Rotations/second
+
+	//Filter for Speed Value
+	const float Tau = 100*ms;
+	static float EncoderSpeedFiltered;
+	float FilterConstant = (T*1.0f/Tau);
+	EncoderSpeedFiltered = (1-FilterConstant) * EncoderSpeedFiltered + FilterConstant * EncoderSpeed; //Speed in rpm/second
+
+	//Filter for Speed Value
+	const float Tau2 = 10*ms;
+	static float EncoderSpeedFiltered2;
+	float FilterConstant2 = (T*1.0f/Tau2);
+	EncoderSpeedFiltered2 = (1-FilterConstant2) * EncoderSpeedFiltered2 + FilterConstant2 * EncoderSpeed; //Speed in rpm/second
 
 
-	//PARAMETERS
+	Data->Out.EncoderPosition 		= EncoderAbsPosition;
+	Data->Out.EncoderPostionFloat 	= EncoderPosition;
+	Data->Out.EncoderSpeed 			= EncoderSpeed;
+	Data->Out.EncoderSpeedFiltered 	= EncoderSpeedFiltered;
+	Data->Out.EncoderSpeed10msFiltered 	= EncoderSpeedFiltered2;
 
 
-	//INPUTS
-	int16_t EncoderRAW 			= (int16_t)htim4.Instance->CNT;
-	//TODO: Initialize and correctly normalize encoder position
-	float EncoderPosition  		= ((float)EncoderRAW)/8000;
+	/*static int MeasuredDirection = 0;
 
+	if(EncoderDelta > 0) MeasuredDirection = 1;
+	if(EncoderDelta < 0) MeasuredDirection = -1;
+
+	//Mesung der Geschwindigkeit - Time between pulses
+	static ui16 Time1 = 0;
+	static ui16 Time2 = 0;
+
+	static ui32 Tunchanged1 = 0;
+	static ui32 Tunchanged2 = 0;
+
+	ui16 mTime1 = Time1;
+	ui16 mTime2 = Time2;
+	Time1 = __HAL_TIM_GetCompare(&htim3, TIM_CHANNEL_1);
+	Time2 = __HAL_TIM_GetCompare(&htim3, TIM_CHANNEL_2);
+
+
+	ui16 Delta1 = Time1 - Time2;
+	ui16 Delta2 = Time2 - Time1;
+
+	if(Time1-mTime1 != 0) 	Tunchanged1 = 0;
+	else 					Tunchanged1 += T;
+	if(Time2-mTime2 != 0) 	Tunchanged2 = 0;
+	else 					Tunchanged2 += T;
+
+	static ui32 TimeInvalid = 0;
+	ui32 OverflowTime = 40*ms;
+	static bool Invalid = 1;
+	bool mInvalid = Invalid;
+
+	if(Invalid != mInvalid) 	TimeInvalid = 0;
+	else 						TimeInvalid += T;
+
+
+	if		(Tunchanged1 > OverflowTime || Tunchanged2 > OverflowTime) 										Invalid = 1;
+	else if (Invalid && (TimeInvalid > 2) && (Tunchanged1 < OverflowTime) && (Tunchanged2 < OverflowTime)) 	Invalid = 0;
+	//else																					Invalid = Invalid;
+
+	float ValidSpeed = Invalid ? infinityf() :  MIN(Delta1, Delta2);
+	//Prescaler 100-1
+
+	ui32 timeDelta;
+
+	float MeasuredSpeed =  90000000.0f/(100.0f)/(ValidSpeed*Period)* MeasuredDirection; //in Rotations/second
+
+
+	Data->Out.DeltaTime = MeasuredSpeed;*/
 
 	//OUTPUTS
 	Direction direction = Neutral;
 	float Speed = 0;
-
-	bool UART_Send  = 0;
-	if(T_UART < UART_Interval) 	{ T_UART = T_UART + 1; 				UART_Send = 0; }
-	else 						{ T_UART = T_UART + 1 - UART_Interval; UART_Send = 1; }
 
 
 	// reset T_State if state has changed
@@ -106,11 +174,31 @@ void arm_control__25kHz()
 		T_state = 0;
 		prev_state = state;
 	} else {
-		++T_state;
+		T_state += T;
 	}
 
 	switch (state)
 	{
+		case Init:
+		{
+			static bool mReferencePulse = 1;
+			bool ReferencePulse 		= HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_15);
+
+			if(ReferencePulse && !mReferencePulse) //Positive Edge Detected
+			{
+				 __HAL_TIM_SET_COUNTER(&htim4,0);
+				 EncoderRAW = 0;
+				 EncoderAbsPosition = 0;
+				 state = Stop;
+			}
+			mReferencePulse = ReferencePulse;
+
+			Speed = 0.3;
+			direction = Forward;
+
+			break;
+		}
+
 		/*
 		 * In the prepare state the arm is slowly moved down. Then it goes into the accelerate state
 		 */
@@ -165,8 +253,17 @@ void arm_control__25kHz()
 
 		case Stop:
 		{
-			Speed = 0;
-			direction = Neutral;
+			if(EncoderPosition > 0.005)
+			{
+				Speed = 0.3;
+				direction = Backward;
+			} else if(EncoderPosition < -0.005) {
+				Speed = 0.3;
+				direction = Forward;
+			} else {
+				Speed = 0;
+				direction = Neutral;
+			}
 		}
 
 	}
@@ -192,4 +289,3 @@ void arm_control__1kHz()
 
 
 }
-
