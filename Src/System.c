@@ -40,9 +40,12 @@ void Update1kHz()
 	if(SendTimer == 0)
 	{
 		OutputDataFrame.StartData = 0x12345678;
-		OutputDataFrame.WaageA = Arm.Out.EncoderSpeed10msFiltered;
-		OutputDataFrame.WaageB = Arm.Out.EncoderPostionFloat;
-		OutputDataFrame.WaageC = Arm.Out.SpeedHardware;
+		OutputDataFrame.WaageA = Dms.Out.DMSValueRaw;
+		OutputDataFrame.WaageB = Dms.Out.DMSWeight;
+		OutputDataFrame.WaageC = Dms.Out.DMSFiltered;
+		//OutputDataFrame.WaageA = Arm.Out.EncoderSpeed10msFiltered;
+		//OutputDataFrame.WaageB = Arm.Out.EncoderPostionFloat;
+		//OutputDataFrame.WaageC = Arm.Out.SpeedHardware;
 		OutputDataFrame.WaageD = Arm.Out.Voltage;
 		HAL_UART_Transmit_DMA(&huart2, &OutputDataFrame, sizeof(OutputDataFrame));
 	}

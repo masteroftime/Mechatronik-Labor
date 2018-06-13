@@ -23,6 +23,8 @@ typedef struct
 {
 	float DMSFiltered;
 	float DMSOnTime;
+	float DMSValueRaw;
+	float DMSWeight;
 }DMS_OUT;
 
 typedef struct
@@ -33,6 +35,8 @@ typedef struct
 
 
 void DMS_Update(uint32_t T, DMS_DATA* Data);
+
+void DoTara();
 
 extern unsigned long DMSPeriod;
 extern unsigned long DMSDuty;

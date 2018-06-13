@@ -33,7 +33,7 @@ typedef uint8_t bool;
 
 typedef enum
 {
-	Init, Prepare, Accelerate, Break, Stop
+	Init, Prepare, Accelerate, Break, Stop, Weight
 }Mode;
 
 typedef enum{
@@ -43,6 +43,10 @@ typedef enum{
 
 float target_position = 0.25f;
 float target_speed = 0;
+
+
+#define POSITION_STABLE_TIME (3	*sec)
+ui8 position_stable = 0;
 
 Mode state = Init;
 
@@ -68,6 +72,39 @@ void shoot(float velocity, float angle) {
 	target_speed = velocity;
 
 	state = Prepare;
+}
+
+float simple_pi_pos_control(float target_pos, float current_pos) {
+	static float integral = 0;
+	const float Ki = 0.001;
+	const float Kp = 15;
+
+
+	float error = target_pos - current_pos;
+
+	integral += error;
+	CLAMP(integral, -1.0f/Ki, 1.0f/Ki)
+
+	float pwm = Kp * error + Ki * integral;
+	CLAMP(pwm, -1.0f, 1.0f)
+
+
+	static float prev_position = 0;
+	static ui32 pos_unchanged = 0;
+
+	if(prev_position == current_pos) {
+		if(++pos_unchanged > POSITION_STABLE_TIME) {
+			position_stable = 1;
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+		}
+	} else {
+		prev_position = current_pos;
+		pos_unchanged = 0;
+		position_stable = 0;
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+	}
+
+	return pwm;
 }
 
 
@@ -253,31 +290,28 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 
 		case Stop:
 		{
-			/*if(EncoderPosition > 0.005)
-			{
-				Speed = 0.3;
+			float pwm = simple_pi_pos_control(-0.01, EncoderPosition);
+
+			if(pwm < 0) {
 				direction = Backward;
-			} else if(EncoderPosition < -0.005) {
-				Speed = 0.3;
-				direction = Forward;
+				pwm *= -1;
 			} else {
-				Speed = 0;
-				direction = Neutral;
-			}*/
+				direction = Forward;
+			}
 
-			static float integral = 0;
-			const float Ki = 0.001;
-			const float Kp = 15;
-			//const float Kd = 0;
+			Speed = pwm;
 
+			if(position_stable) {
+				DoTara();
+				state = Weight;
+			}
 
-			float error = -0.01f - EncoderPosition;
+			break;
+		}
 
-			integral += error;
-			CLAMP(integral, -1.0f/Ki, 1.0f/Ki)
-
-			float pwm = Kp * error + Ki * integral; // - Kd * EncoderSpeedFiltered2;
-			CLAMP(pwm, -1.0f, 1.0f)
+		case Weight:
+		{
+			float pwm = simple_pi_pos_control(-0.01, EncoderPosition);
 
 			if(pwm < 0) {
 				direction = Backward;

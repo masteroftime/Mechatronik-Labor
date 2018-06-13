@@ -7,10 +7,14 @@
 
 #include "DMS.h"
 
-
+//#define SCALING_FACTOR 51.337f
+#define SCALING_FACTOR 58.606f
 
 unsigned long DMSPeriod;
 unsigned long DMSDuty;
+
+float DMSFiltered;
+float Tara = 0;
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
@@ -22,14 +26,15 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 	 }
 }
 
+void DoTara() {
+	Tara = DMSFiltered;
+}
 
 
 void DMS_Update(uint32_t T, DMS_DATA* Data)
 {
-	DMS_OUT OUT;
 	//Waage
 	const float Tau = 500*ms;
-	static float DMSFiltered;
 	float FilterConstant = (T*1.0f/Tau);
 	DMSFiltered = (1-FilterConstant) * DMSFiltered + FilterConstant * DMSPeriod;
 
@@ -38,6 +43,7 @@ void DMS_Update(uint32_t T, DMS_DATA* Data)
 
 	Data->Out.DMSFiltered = DMSFiltered;
 	Data->Out.DMSOnTime = DMSDuty;
-
+	Data->Out.DMSValueRaw = DMSFiltered - Tara;
+	Data->Out.DMSWeight = (DMSFiltered - Tara)/SCALING_FACTOR;
 }
 
