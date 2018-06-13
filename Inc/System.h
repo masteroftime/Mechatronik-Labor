@@ -29,6 +29,8 @@ typedef signed long long i64;
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
 #define MAX(a,b)  ((a)>(b) ? (a) : (b))
 
+#define CLAMP(var, min, max) if(var < (min)) var = (min); if(var > (max)) var = (max);
+
 void Update25kHz();
 void Update1kHz();
 

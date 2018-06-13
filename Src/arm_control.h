@@ -38,9 +38,10 @@ typedef struct
 	float EncoderSpeed;
 	float EncoderSpeedFiltered;
 	float EncoderSpeed10msFiltered;
-	float DeltaTime;
+	float SpeedHardware;
 	ui32 Time2;
 	float EncoderSpeedTime;
+	float Voltage;
 }ARM_OUT;
 
 typedef struct

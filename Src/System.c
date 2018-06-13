@@ -9,6 +9,7 @@
 #include "System.h"
 #include "DMS.h"
 #include "arm_control.h"
+#include "adc.h"
 
 ARM_DATA Arm;
 DMS_DATA Dms;
@@ -35,14 +36,14 @@ void Update1kHz()
 	DMS_Update(T, &Dms);
 
 
-	SendTimer = (SendTimer + T)%(30*ms);
+	SendTimer = (SendTimer + T)%(1*ms);
 	if(SendTimer == 0)
 	{
 		OutputDataFrame.StartData = 0x12345678;
 		OutputDataFrame.WaageA = Arm.Out.EncoderSpeed10msFiltered;
 		OutputDataFrame.WaageB = Arm.Out.EncoderPostionFloat;
-		OutputDataFrame.WaageC = Arm.Out.DeltaTime;
-		OutputDataFrame.WaageD = Arm.Out.EncoderSpeedFiltered;
+		OutputDataFrame.WaageC = Arm.Out.SpeedHardware;
+		OutputDataFrame.WaageD = Arm.Out.Voltage;
 		HAL_UART_Transmit_DMA(&huart2, &OutputDataFrame, sizeof(OutputDataFrame));
 	}
 }

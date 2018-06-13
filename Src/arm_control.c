@@ -115,7 +115,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 	Data->Out.EncoderSpeed10msFiltered 	= EncoderSpeedFiltered2;
 
 
-	/*static int MeasuredDirection = 0;
+	static int MeasuredDirection = 0;
 
 	if(EncoderDelta > 0) MeasuredDirection = 1;
 	if(EncoderDelta < 0) MeasuredDirection = -1;
@@ -159,11 +159,11 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 
 	ui32 timeDelta;
 
-	float MeasuredSpeed =  90000000.0f/(100.0f)/(ValidSpeed*Period)* MeasuredDirection; //in Rotations/second
+	float SpeedHardware =  90000000.0f/(20.0f)/(ValidSpeed*Period)* MeasuredDirection; //in Rotations/second
 
 
-	Data->Out.DeltaTime = MeasuredSpeed;*/
-
+	Data->Out.SpeedHardware = SpeedHardware;
+	Data->Out.Voltage = ADC1_value/4095.0f * 3.3f * 11;
 	//OUTPUTS
 	Direction direction = Neutral;
 	float Speed = 0;
@@ -253,7 +253,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 
 		case Stop:
 		{
-			if(EncoderPosition > 0.005)
+			/*if(EncoderPosition > 0.005)
 			{
 				Speed = 0.3;
 				direction = Backward;
@@ -263,7 +263,32 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 			} else {
 				Speed = 0;
 				direction = Neutral;
+			}*/
+
+			static float integral = 0;
+			const float Ki = 0.001;
+			const float Kp = 15;
+			//const float Kd = 0;
+
+
+			float error = -0.01f - EncoderPosition;
+
+			integral += error;
+			CLAMP(integral, -1.0f/Ki, 1.0f/Ki)
+
+			float pwm = Kp * error + Ki * integral; // - Kd * EncoderSpeedFiltered2;
+			CLAMP(pwm, -1.0f, 1.0f)
+
+			if(pwm < 0) {
+				direction = Backward;
+				pwm *= -1;
+			} else {
+				direction = Forward;
 			}
+
+			Speed = pwm;
+
+			break;
 		}
 
 	}
