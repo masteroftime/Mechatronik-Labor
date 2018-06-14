@@ -41,8 +41,9 @@ typedef enum{
 }Direction;
 
 
-float target_position = 0.25f;
-float target_speed = 0;
+float shooting_position = 0.125f;
+// target final velocity in rad/sec
+float target_speed = 18.456f;
 
 
 #define POSITION_STABLE_TIME (3	*sec)
@@ -68,16 +69,16 @@ void shoot(float velocity, float angle) {
 	if(angle > 0.25f) angle = 0.25f;
 		else if(angle < 0) angle = 0;
 
-	target_position = angle;
+	shooting_position = angle;
 	target_speed = velocity;
 
 	state = Prepare;
 }
 
-float simple_pi_pos_control(float target_pos, float current_pos) {
+float simple_pi_pos_control(float target_pos, float current_pos, const ui32 T) {
 	static float integral = 0;
 	const float Ki = 0.001;
-	const float Kp = 15;
+	const float Kp = 5;
 
 
 	float error = target_pos - current_pos;
@@ -93,7 +94,7 @@ float simple_pi_pos_control(float target_pos, float current_pos) {
 	static ui32 pos_unchanged = 0;
 
 	if(prev_position == current_pos) {
-		if(++pos_unchanged > POSITION_STABLE_TIME) {
+		if((pos_unchanged += T) > POSITION_STABLE_TIME) {
 			position_stable = 1;
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 		}
@@ -107,8 +108,35 @@ float simple_pi_pos_control(float target_pos, float current_pos) {
 	return pwm;
 }
 
+float velocity_control(float target_velocity, float current_velocity, float current_angle, float mass, const unsigned long T, ARM_DATA* debug_data) {
+	const float Kp = 3;
+	const float Ki = (10.0f*T)/sec;
 
-void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
+	static float integral = 0;
+
+	float u_out = (mass-M_ARM)*G_ERD*L_ARM*Math__sin(current_angle+PI/2)*R_MOTOR/KI_MOTOR+KU_MOTOR*current_velocity
+			+ Kp * (target_velocity-current_velocity) + integral;
+
+
+	if(u_out > -V_SUPPLY && u_out < V_SUPPLY) {
+		integral += Ki * (target_velocity-current_velocity);
+	} else {
+		integral = 0;
+	}
+
+	CLAMP(u_out, -V_SUPPLY, V_SUPPLY)
+
+	debug_data->Out.Controller_Integral = integral;
+	debug_data->Out.Controller_Out = u_out;
+	debug_data->Out.Current_Angle = current_angle;
+	debug_data->Out.Current_Velocity = current_velocity;
+	debug_data->Out.Target_Velocity = target_velocity;
+
+	return u_out/V_SUPPLY;
+}
+
+
+void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 {
 	//STATES
 	static Mode				prev_state = Accelerate;	// previous state, used to detect state changes
@@ -140,16 +168,16 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 
 	//Filter for Speed Value
 	const float Tau2 = 10*ms;
-	static float EncoderSpeedFiltered2;
+	static float EncoderSpeedFiltered_10ms;
 	float FilterConstant2 = (T*1.0f/Tau2);
-	EncoderSpeedFiltered2 = (1-FilterConstant2) * EncoderSpeedFiltered2 + FilterConstant2 * EncoderSpeed; //Speed in rpm/second
+	EncoderSpeedFiltered_10ms = (1-FilterConstant2) * EncoderSpeedFiltered_10ms + FilterConstant2 * EncoderSpeed; //Speed in rpm/second
 
 
 	Data->Out.EncoderPosition 		= EncoderAbsPosition;
 	Data->Out.EncoderPostionFloat 	= EncoderPosition;
 	Data->Out.EncoderSpeed 			= EncoderSpeed;
 	Data->Out.EncoderSpeedFiltered 	= EncoderSpeedFiltered;
-	Data->Out.EncoderSpeed10msFiltered 	= EncoderSpeedFiltered2;
+	Data->Out.EncoderSpeed10msFiltered 	= EncoderSpeedFiltered_10ms;
 
 
 	static int MeasuredDirection = 0;
@@ -226,7 +254,8 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 				 __HAL_TIM_SET_COUNTER(&htim4,0);
 				 EncoderRAW = 0;
 				 EncoderAbsPosition = 0;
-				 state = Stop;
+				 //state = Stop;
+				 state = Prepare;
 			}
 			mReferencePulse = ReferencePulse;
 
@@ -241,7 +270,22 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 		 */
 		case Prepare:
 		{
-			if(EncoderPosition > -0.125f) {
+			float pwm = simple_pi_pos_control(-0.150f, EncoderPosition, T);
+
+			if(pwm < 0) {
+				direction = Backward;
+				pwm *= -1;
+			} else {
+				direction = Forward;
+			}
+
+			Speed = pwm;
+
+			if(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET) {
+				state = Accelerate;
+			}
+
+			/*if(EncoderPosition > -0.125f) {
 				Speed = 0.3;
 				direction = Backward;
 			} else if(EncoderPosition < -0.150f){
@@ -249,7 +293,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 				direction = Forward;
 			} else {
 				state = Accelerate;
-			}
+			}*/
 		}
 		break;
 
@@ -259,7 +303,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 		 */
 		case Accelerate:
 		{
-			if(EncoderPosition < target_position) {
+			/*if(EncoderPosition < target_position) {
 			//if(T_state < 500 * ms) {
 				Speed = 1;
 				direction = Forward;
@@ -267,7 +311,40 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 				Speed = 1;
 				direction = Backward;
 				state = Break;
+			}*/
+
+			float velocity;
+
+			if(EncoderPosition < shooting_position) {
+
+				// phi(t) = a * t^2 / 2
+				// v(t) = a * t = a * sqrt( 2 phi(t) / a) = sqrt( 2 a phi(t))
+				// t = sqrt(2 phi(t) / a)
+
+
+				velocity = target_speed;
+				//velocity = sqrt(
+			} else {
+				velocity = 0;
+
+				if(EncoderSpeedFiltered <= 0.01f) {
+					state = Prepare;
+				}
 			}
+
+			float current_angle = EncoderPosition*2*PI;
+			float current_velocity = EncoderSpeedFiltered_10ms*2*PI;
+
+			float pwm = velocity_control(velocity, current_velocity, current_angle, 0, T, Data);
+
+			if(pwm < 0) {
+				direction = Backward;
+				pwm *= -1;
+			} else {
+				direction = Forward;
+			}
+
+			Speed = pwm;
 		}
 		break;
 
@@ -276,7 +353,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 		 */
 		case Break:
 		{
-			if(EncoderPosition > (target_position - 0.1f)) {
+			if(EncoderPosition > (shooting_position - 0.1f)) {
 			//if(T_state < 100 * ms) {
 				Speed = 1;
 				direction = Backward;
@@ -290,7 +367,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 
 		case Stop:
 		{
-			float pwm = simple_pi_pos_control(-0.01, EncoderPosition);
+			float pwm = simple_pi_pos_control(-0.01, EncoderPosition,T);
 
 			if(pwm < 0) {
 				direction = Backward;
@@ -311,7 +388,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 
 		case Weight:
 		{
-			float pwm = simple_pi_pos_control(-0.01, EncoderPosition);
+			float pwm = simple_pi_pos_control(-0.01, EncoderPosition,T);
 
 			if(pwm < 0) {
 				direction = Backward;
@@ -342,9 +419,7 @@ void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 }
 
 
-void arm_control__1kHz()
+void arm_control__25kHz(const unsigned long T, ARM_DATA* Data)
 {
-
-
 
 }

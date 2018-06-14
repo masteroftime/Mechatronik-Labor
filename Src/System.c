@@ -32,21 +32,24 @@ void Update1kHz()
 	static uint32_t SendTimer;
 
 
-	arm_control__1kHz();
+	arm_control__1kHz(T, &Arm);
 	DMS_Update(T, &Dms);
 
 
-	SendTimer = (SendTimer + T)%(1*ms);
+	SendTimer = (SendTimer + T)%(5*ms);
 	if(SendTimer == 0)
 	{
 		OutputDataFrame.StartData = 0x12345678;
 		OutputDataFrame.WaageA = Dms.Out.DMSValueRaw;
 		OutputDataFrame.WaageB = Dms.Out.DMSWeight;
 		OutputDataFrame.WaageC = Dms.Out.DMSFiltered;
-		//OutputDataFrame.WaageA = Arm.Out.EncoderSpeed10msFiltered;
-		//OutputDataFrame.WaageB = Arm.Out.EncoderPostionFloat;
-		//OutputDataFrame.WaageC = Arm.Out.SpeedHardware;
 		OutputDataFrame.WaageD = Arm.Out.Voltage;
+		OutputDataFrame.Controller_Out = Arm.Out.Controller_Out;
+		OutputDataFrame.Controller_Integral = Arm.Out.Controller_Integral;
+		OutputDataFrame.Target_Velocity = Arm.Out.Target_Velocity;
+		OutputDataFrame.Current_Angle = Arm.Out.Current_Angle;
+		OutputDataFrame.Current_Velocity = Arm.Out.Current_Velocity;
+		OutputDataFrame.Constant_Test_Data = 42;
 		HAL_UART_Transmit_DMA(&huart2, &OutputDataFrame, sizeof(OutputDataFrame));
 	}
 }

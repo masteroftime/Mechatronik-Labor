@@ -42,6 +42,11 @@ typedef struct
 	ui32 Time2;
 	float EncoderSpeedTime;
 	float Voltage;
+	float Controller_Out;
+	float Controller_Integral;
+	float Current_Velocity;
+	float Current_Angle;
+	float Target_Velocity;
 }ARM_OUT;
 
 typedef struct
@@ -54,7 +59,7 @@ typedef struct
 //Functions, Variables
 
 void arm_control__25kHz(const unsigned long T, ARM_DATA* Data);
-void arm_control__1kHz();
+void arm_control__1kHz(const unsigned long T, ARM_DATA* Data);
 
 //void shoot();
 void shoot(float, float);
