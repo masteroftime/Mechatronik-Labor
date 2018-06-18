@@ -55,7 +55,16 @@ typedef struct
 	ARM_OUT Out;
 }ARM_DATA;
 
+typedef struct
+{
+	uint32_t StartData;
+	float ShootPosition;
+	float ShootSpeed;
+	uint32_t ShootCommand;
+}
+ControlFrame;
 
+ControlFrame InputControlFrame;
 //Functions, Variables
 
 void arm_control__25kHz(const unsigned long T, ARM_DATA* Data);

@@ -11,6 +11,7 @@
 /* USER CODE END Includes */
 
 DataFrame  OutputDataFrame;
+ControlFrame InputControlFrame;
 
 void SetPWM_ChannelA(float A, float B)
 {
@@ -41,15 +42,19 @@ typedef enum{
 }Direction;
 
 
-float shooting_position = 0.125f;
-// target final velocity in rad/sec
-float target_speed = 18.456f;
+//Position variables
+float zero_position = 4 * DEG;
+float prepare_position = -60 * DEG;
+float shooting_position = 45 * DEG;
+float target_speed = 18.456f;			// target final velocity in rad/sec
 
 
 #define POSITION_STABLE_TIME (3	*sec)
 ui8 position_stable = 0;
 
 Mode state = Init;
+
+
 
 /*ui16 time1_overflow = 0;
 ui16 time2_overflow = 0;
@@ -75,10 +80,17 @@ void shoot(float velocity, float angle) {
 	state = Prepare;
 }
 
-float simple_pi_pos_control(float target_pos, float current_pos, const ui32 T) {
+float simple_pi_pos_control(float target_pos, float current_pos, const ui32 T, float factor_p, float factor_i) {
 	static float integral = 0;
-	const float Ki = 0.001;
-	const float Kp = 5;
+
+	//Clamp factors
+	if(factor_p < 0) factor_p = 0;
+
+	if(factor_i < 0) factor_i = 0;
+
+	//P and I koefficients
+	float Ki = 0.012 * factor_i;
+	float Kp = 3.5 * factor_p;
 
 
 	float error = target_pos - current_pos;
@@ -96,20 +108,21 @@ float simple_pi_pos_control(float target_pos, float current_pos, const ui32 T) {
 	if(prev_position == current_pos) {
 		if((pos_unchanged += T) > POSITION_STABLE_TIME) {
 			position_stable = 1;
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 		}
 	} else {
 		prev_position = current_pos;
 		pos_unchanged = 0;
 		position_stable = 0;
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+	//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 	}
 
 	return pwm;
 }
 
+
 float velocity_control(float target_velocity, float current_velocity, float current_angle, float mass, const unsigned long T, ARM_DATA* debug_data) {
-	const float Kp = 3;
+	const float Kp = 4;
 	const float Ki = (10.0f*T)/sec;
 
 	static float integral = 0;
@@ -138,6 +151,7 @@ float velocity_control(float target_velocity, float current_velocity, float curr
 
 void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 {
+	ControlFrame PcFrame = InputControlFrame;
 	//STATES
 	static Mode				prev_state = Accelerate;	// previous state, used to detect state changes
 	static uint32_t 		T_state;					// time spent in current state
@@ -157,7 +171,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 	else if (Delta < -(int32_t)Period/2)	{ EncoderDelta = Delta + Period; EncoderAbsPosition += EncoderDelta; }
 	else 									{ EncoderDelta = Delta; 		 EncoderAbsPosition += EncoderDelta; }
 
-	float EncoderPosition  		= (EncoderAbsPosition*1.0f)/Period;		//in Rotations
+	float EncoderPosition  		= (EncoderAbsPosition*1.0f)/Period + zero_position;		//in Rotations
 	float EncoderSpeed 			= EncoderDelta*1.0f*sec / (Period*T); //in Rotations/second
 
 	//Filter for Speed Value
@@ -234,6 +248,26 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 	float Speed = 0;
 
 
+	//Input Button
+	static bool Button = 0;
+	bool mButton = Button;
+	Button = HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET;
+	bool ButtonEdge = Button && !mButton;
+	bool ButtonFallingEdge = !Button && mButton;
+
+	static bool ShootCommand = 0;
+	bool mShootCommand = ShootCommand;
+	ShootCommand = PcFrame.ShootCommand;
+
+	bool ShootCommandEdge = ShootCommand && !mShootCommand;
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, ShootCommand ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	if(ShootCommandEdge)
+	{
+		target_speed = PcFrame.ShootSpeed; //PC value in rad/sec
+		shooting_position = PcFrame.ShootPosition / (2 * PI); //PC value in rad
+	}
+
+
 	// reset T_State if state has changed
 	if(prev_state != state)  {
 		T_state = 0;
@@ -254,8 +288,8 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				 __HAL_TIM_SET_COUNTER(&htim4,0);
 				 EncoderRAW = 0;
 				 EncoderAbsPosition = 0;
-				 //state = Stop;
-				 state = Prepare;
+				 state = Stop;
+				 //state = Prepare;
 			}
 			mReferencePulse = ReferencePulse;
 
@@ -270,7 +304,15 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 		 */
 		case Prepare:
 		{
-			float pwm = simple_pi_pos_control(-0.150f, EncoderPosition, T);
+
+			float Tmax = 1*sec;
+			float T_rel = T_state /Tmax;
+
+			if(T_rel>1) T_rel = 1;	//clamp T_rel
+			float targetPosition = prepare_position*T_rel;
+
+
+			float pwm = simple_pi_pos_control(targetPosition, EncoderPosition, T, 2.0f, 1.5f);
 
 			if(pwm < 0) {
 				direction = Backward;
@@ -281,7 +323,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 
 			Speed = pwm;
 
-			if(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET) {
+			if(ButtonEdge || ShootCommandEdge) {
 				state = Accelerate;
 			}
 
@@ -322,13 +364,19 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				// t = sqrt(2 phi(t) / a)
 
 
-				velocity = target_speed;
-				//velocity = sqrt(
+				//velocity = target_speed;
+				//float a = target_speed*target_speed / (2 * shooting_position-prepare_position);
+				//velocity = sqrt( 2 * a * (EncoderPosition-prepare_position) < 0 ? 0.5f : (EncoderPosition-prepare_position));
+
+				float T_rel = (EncoderPosition-prepare_position)/(shooting_position-prepare_position);
+
+
+				velocity = (0.5f + 0.5f * T_rel)*target_speed;
 			} else {
 				velocity = 0;
 
 				if(EncoderSpeedFiltered <= 0.01f) {
-					state = Prepare;
+					state = Stop;
 				}
 			}
 
@@ -367,7 +415,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 
 		case Stop:
 		{
-			float pwm = simple_pi_pos_control(-0.01, EncoderPosition,T);
+			float pwm = simple_pi_pos_control(0, EncoderPosition,T,1.0f, 1.0f);
 
 			if(pwm < 0) {
 				direction = Backward;
@@ -383,12 +431,18 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				state = Weight;
 			}
 
+
+			if(ButtonEdge)
+			{
+				state = Prepare;
+			}
+
 			break;
 		}
 
 		case Weight:
 		{
-			float pwm = simple_pi_pos_control(-0.01, EncoderPosition,T);
+			float pwm = simple_pi_pos_control(0, EncoderPosition,T,1.0f,1.0f);
 
 			if(pwm < 0) {
 				direction = Backward;
@@ -398,6 +452,10 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 			}
 
 			Speed = pwm;
+
+			if(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET) {
+				state = Prepare;
+			}
 
 			break;
 		}

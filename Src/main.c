@@ -337,15 +337,15 @@ void SendDataViaUART(void* Buffer, uint32_t length)
 
 void UART_DataReceived()
 {
-//	uint32_t Data = UART_RX_DATA[ReadIndex][0]<<0 | UART_RX_DATA[ReadIndex][1]<<8 | UART_RX_DATA[ReadIndex][2]<<16 | UART_RX_DATA[ReadIndex][3]<<24;
-//	if(Data == 0x12345678)
-//	{
-//		memcpy(&InputControlFrame, UART_RX_DATA[ReadIndex],sizeof(ControlFrame));
-//
-//		 SetPosition(InputControlFrame.PositionSetpoint,InputControlFrame.SpeedSetpoint, InputControlFrame.LorenzPositionSetpoint );
-//
-//		 //SetLorenzAktuator(InputControlFrame.LorenzPositionSetpoint,1.0f-InputControlFrame.LorenzPositionSetpoint);
-//	}
+	uint32_t Data = UART_RX_DATA[ReadIndex][0]<<0 | UART_RX_DATA[ReadIndex][1]<<8 | UART_RX_DATA[ReadIndex][2]<<16 | UART_RX_DATA[ReadIndex][3]<<24;
+	if(Data == 0x12345678)
+	{
+		memcpy(&InputControlFrame, UART_RX_DATA[ReadIndex],sizeof(ControlFrame));
+
+		 //SetPosition(InputControlFrame.PositionSetpoint,InputControlFrame.SpeedSetpoint, InputControlFrame.LorenzPositionSetpoint );
+
+		 //SetLorenzAktuator(InputControlFrame.LorenzPositionSetpoint,1.0f-InputControlFrame.LorenzPositionSetpoint);
+	}
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)

@@ -41,6 +41,8 @@ typedef signed long long i64;
 
 #define CLAMP(var, min, max) if(var < (min)) var = (min); if(var > (max)) var = (max);
 
+#define DEG (1.0f/360)
+
 void Update25kHz();
 void Update1kHz();
 
