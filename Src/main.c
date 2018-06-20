@@ -51,7 +51,7 @@
 #include "sys.h"
 #include "stdio.h"
 #include "stdarg.h"
-#include "DC_Control.h"
+#include "arm_control.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/

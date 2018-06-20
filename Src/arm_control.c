@@ -43,7 +43,7 @@ typedef enum{
 
 
 //Position variables
-float zero_position = 4 * DEG;
+float zero_position = 6.0f * DEG; //positive value trims down
 float prepare_position = -60 * DEG;
 float shooting_position = 45 * DEG;
 float target_speed = 18.456f;			// target final velocity in rad/sec
@@ -374,7 +374,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				float T_rel = (EncoderPosition-prepare_position)/(shooting_position-prepare_position);
 
 
-				velocity = (0.5f + 0.5f * T_rel)*target_speed;
+				velocity = (0.75f + 0.25f * T_rel)*target_speed;
 			} else {
 				velocity = 0;
 
@@ -435,7 +435,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 			}
 
 
-			if(ButtonEdge)
+			if(ButtonEdge || ShootCommandEdge)
 			{
 				state = Prepare;
 			}
