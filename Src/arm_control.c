@@ -194,6 +194,8 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 	Data->Out.EncoderSpeed10msFiltered 	= EncoderSpeedFiltered_10ms;
 
 
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, PcFrame.TaraCommand ? GPIO_PIN_RESET : GPIO_PIN_SET);
+
 	static int MeasuredDirection = 0;
 
 	if(EncoderDelta > 0) MeasuredDirection = 1;
@@ -243,6 +245,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 
 	Data->Out.SpeedHardware = SpeedHardware;
 	Data->Out.Voltage = ADC1_value/4095.0f * 3.3f * 11;
+
 	//OUTPUTS
 	Direction direction = Neutral;
 	float Speed = 0;
@@ -260,7 +263,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 	ShootCommand = PcFrame.ShootCommand;
 
 	bool ShootCommandEdge = ShootCommand && !mShootCommand;
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, ShootCommand ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
 	if(ShootCommandEdge)
 	{
 		target_speed = PcFrame.ShootSpeed; //PC value in rad/sec
@@ -453,7 +456,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 
 			Speed = pwm;
 
-			if(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET) {
+			if(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET || ShootCommandEdge) {
 				state = Prepare;
 			}
 
@@ -461,6 +464,9 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 		}
 
 	}
+
+
+	Data->Out.State = state;
 
 	SetMotor(direction, Speed);
 

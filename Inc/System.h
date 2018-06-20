@@ -61,6 +61,7 @@ typedef struct
 	float Current_Angle;
 	float Target_Velocity;
 	float Constant_Test_Data;
+	ui32 State;
 }
 DataFrame;
 

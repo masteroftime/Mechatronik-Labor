@@ -6,6 +6,7 @@
  */
 
 #include "DMS.h"
+#include "arm_control.h"
 
 //#define SCALING_FACTOR 51.337f
 #define SCALING_FACTOR 18.88f
@@ -33,6 +34,7 @@ void DoTara() {
 
 void DMS_Update(uint32_t T, DMS_DATA* Data)
 {
+
 	//Waage
 	const float Tau = 100*ms;
 	float FilterConstant = (T*1.0f/Tau);
@@ -72,7 +74,8 @@ void DMS_Update(uint32_t T, DMS_DATA* Data)
 
 	bool TaraButton = HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_3);
 
-	if(TaraButton) Tara = DMSFiltered;
+	bool TaraPc = InputControlFrame.TaraCommand != 0;
+	if(TaraButton || 	TaraPc) Tara = DMSFiltered;
 
 
 	Data->Out.DMSOnTime = DMSDuty;

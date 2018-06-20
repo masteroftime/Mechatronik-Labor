@@ -16,7 +16,6 @@
 
 typedef struct
 {
-	uint32_t UART_Send;
 }DMS_IN;
 
 typedef struct

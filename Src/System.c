@@ -32,6 +32,7 @@ void Update1kHz()
 	static uint32_t SendTimer;
 
 
+
 	arm_control__1kHz(T, &Arm);
 	DMS_Update(T, &Dms);
 
@@ -50,6 +51,7 @@ void Update1kHz()
 		OutputDataFrame.Current_Angle = Arm.Out.Current_Angle;
 		OutputDataFrame.Current_Velocity = Arm.Out.Current_Velocity;
 		OutputDataFrame.Constant_Test_Data = 42;
+		OutputDataFrame.State = Arm.Out.State;
 		HAL_UART_Transmit_DMA(&huart2, &OutputDataFrame, sizeof(OutputDataFrame));
 	}
 }

@@ -47,6 +47,7 @@ typedef struct
 	float Current_Velocity;
 	float Current_Angle;
 	float Target_Velocity;
+	ui32 State;
 }ARM_OUT;
 
 typedef struct
@@ -61,6 +62,10 @@ typedef struct
 	float ShootPosition;
 	float ShootSpeed;
 	uint32_t ShootCommand;
+	uint32_t TaraCommand;
+	uint32_t ResA;
+	uint32_t ResB;
+	uint32_t ResC;
 }
 ControlFrame;
 
