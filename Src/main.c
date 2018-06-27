@@ -42,6 +42,7 @@
 #include "adc.h"
 #include "dma.h"
 #include "i2c.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -52,6 +53,7 @@
 #include "stdio.h"
 #include "stdarg.h"
 #include "arm_control.h"
+#include "FireIndicator.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -70,6 +72,8 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+bool SpiInitDone;
+
 volatile uint16_t blinkDelay = 1000;
 
 size_t
@@ -118,6 +122,7 @@ uint32_t BufferIndex = 0;
 uint32_t ReadIndex = 0;
 unsigned char UART_RX_DATA[BufferCount][BufferSize] = {0};
 
+extern Mode state;
 
 
 
@@ -165,6 +170,7 @@ int main(void)
   MX_TIM13_Init();
   MX_ADC1_Init();
   MX_TIM8_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2); //Start timer to to provide trigger for the adc conversion
   //HAL_ADC_Start_IT(&hadc1);
@@ -204,12 +210,15 @@ int main(void)
   HAL_TIM_IC_Start_IT(&htim8,TIM_CHANNEL_1);
   HAL_TIM_IC_Start(&htim8,TIM_CHANNEL_2);
 
+  HAL_SPI_Init(&hspi2);
 
  unsigned long cntvalue = __HAL_TIM_GET_COUNTER(&htim2);
 
   //Encoder Initialize
   HAL_TIM_Encoder_Start(&htim4,TIM_CHANNEL_ALL); //Encoder
 
+  InitializeColors();
+  SpiInitDone = 1;
 
   fram_init();
   char SystemID[SYSTEM_ID_STRING_SIZE];
@@ -229,33 +238,61 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-
-	  uint32_t Encoder4 = htim4.Instance->CNT;
-
-
-//Auskommentiert 11.4.18
-//	  sprintf(UART_TX_DATA, "Encoder %lu ", Encoder4);
-//	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
-//	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
-
-
-
-//
-//	  uint32_t ADC_Value = HAL_ADC_GetValue(&hadc1);
-//	  sprintf(UART_TX_DATA, "ADC %lu\r\n", ADC_Value);
-//	  //HAL_UART_Transmit_IT(&huart2,(unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA));
-//	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
-////	  PrintBytes(UART_TX_DATA,sizeof(UART_TX_DATA), htim1.Instance,sizeof(TIM_TypeDef),' ');
-////	  HAL_UART_Transmit(&huart2, (unsigned char*)UART_TX_DATA,strlen(UART_TX_DATA),100);
-
-
-	 unsigned long PWMInputCounterValue = __HAL_TIM_GetCounter(&htim8);    //read TIM2 counter value
-
-
 	  HAL_Delay(10); //1ms Wait
+	  ui32 dt = 250;
+	  const ui32 Interval1sec = 1*sec;
+	  const ui32 Interval250ms = 250*ms;
+
+	  static unsigned long Timer1sec = 0;
+	  Timer1sec = (Timer1sec + dt) % Interval1sec;
+
+	  static unsigned long Timer250ms = 0;
+	  Timer250ms = (Timer250ms + dt) % Interval250ms;
+
+
+	  static ui32 ColorMode = 0;
+//	  ColorMode = (ColorMode + 1) % 16;
+//	  ui32 color = GetColor(ColorMode);
+
+	  int LedsOn 				= InputControlFrame.LedShootPosition;
+	  bool Disconnected 		= LedsOn == 0;
+	  if 		(Disconnected) 			LedsOn = 60;
+	  else if 	(LedsOn == 0xFFFFFFFF) 	LedsOn = 0;
+
+	  bool IndicationMode		= state != Prepare;
 
 
 
+	  ui32 color = 0;
+	  if		(Disconnected && Timer250ms < (Interval250ms>>1)) 		color = Red;
+	  else if 	(Disconnected)											color = Aqua;
+	  else if 	(!IndicationMode && (Timer250ms < (Interval250ms>>1))) 	color = (ui32) Red;
+	  else if 	(!IndicationMode)										color = (ui32) Black;
+	  else																color = (ui32) White;
+
+
+	  for(int i = 0; i < LEDs; i++)
+	  {
+		  ui32 ledcolor;
+		  bool On;
+		  if (IndicationMode && !Disconnected)
+		  {
+			  if(i < (LedsOn - 3)) 			{On = 1; ledcolor = White;}
+			  else if (i < LedsOn) 			{On = 1; ledcolor = Lime;}
+			  else if (i == LedsOn) 		{On = 1; ledcolor = 0x0080FF;}
+			  else if (i <= (LedsOn + 3)) 	{On = 1; ledcolor = Lime;}
+			  else 							{On = 1; ledcolor = Black;}
+		  }
+		  else
+		  {
+			  On = i <= LedsOn;
+			  ledcolor = color;
+		  }
+
+		  SetLedColor(i, On ? ledcolor : (ui32)Black);
+	  }
+
+	  UpdateLeds(dt);
 	  CycleCounter++;
   }
   /* USER CODE END 3 */

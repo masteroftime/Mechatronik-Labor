@@ -30,20 +30,9 @@ void SetPWM_ChannelB(float C, float D){
 
 #define position_error 0.01f
 
-typedef uint8_t bool;
-
-typedef enum
-{
-	Init, Prepare, Accelerate, Break, Stop, Weight
-}Mode;
-
-typedef enum{
-	Neutral, Forward, Backward
-}Direction;
-
 
 //Position variables
-float zero_position = 6.0f * DEG; //positive value trims down
+float zero_position = 7.0f * DEG; //positive value trims down
 float prepare_position = -60 * DEG;
 float shooting_position = 45 * DEG;
 float target_speed = 18.456f;			// target final velocity in rad/sec
@@ -122,7 +111,7 @@ float simple_pi_pos_control(float target_pos, float current_pos, const ui32 T, f
 
 
 float velocity_control(float target_velocity, float current_velocity, float current_angle, float mass, const unsigned long T, ARM_DATA* debug_data) {
-	const float Kp = 4;
+	const float Kp = 3;
 	const float Ki = (10.0f*T)/sec;
 
 	static float integral = 0;
@@ -141,9 +130,6 @@ float velocity_control(float target_velocity, float current_velocity, float curr
 
 	debug_data->Out.Controller_Integral = integral;
 	debug_data->Out.Controller_Out = u_out;
-	debug_data->Out.Current_Angle = current_angle;
-	debug_data->Out.Current_Velocity = current_velocity;
-	debug_data->Out.Target_Velocity = target_velocity;
 
 	return u_out/V_SUPPLY;
 }
@@ -175,7 +161,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 	float EncoderSpeed 			= EncoderDelta*1.0f*sec / (Period*T); //in Rotations/second
 
 	//Filter for Speed Value
-	const float Tau = 100*ms;
+	const float Tau = 25*ms;
 	static float EncoderSpeedFiltered;
 	float FilterConstant = (T*1.0f/Tau);
 	EncoderSpeedFiltered = (1-FilterConstant) * EncoderSpeedFiltered + FilterConstant * EncoderSpeed; //Speed in rpm/second
@@ -242,6 +228,8 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 
 	float SpeedHardware =  90000000.0f/(20.0f)/(ValidSpeed*Period)* MeasuredDirection; //in Rotations/second
 
+	float current_angle = EncoderPosition*2*PI;
+	float current_velocity = EncoderSpeedFiltered_10ms*2*PI;
 
 	Data->Out.SpeedHardware = SpeedHardware;
 	Data->Out.Voltage = ADC1_value/4095.0f * 3.3f * 11;
@@ -358,7 +346,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				state = Break;
 			}*/
 
-			float velocity;
+			float velocity = 0;
 
 			if(EncoderPosition < shooting_position) {
 
@@ -383,9 +371,6 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				}
 			}
 
-			float current_angle = EncoderPosition*2*PI;
-			float current_velocity = EncoderSpeedFiltered_10ms*2*PI;
-
 			float pwm = velocity_control(velocity, current_velocity, current_angle, 0, T, Data);
 
 			if(pwm < 0) {
@@ -395,6 +380,7 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 				direction = Forward;
 			}
 
+			Data->Out.Target_Velocity = velocity;
 			Speed = pwm;
 		}
 		break;
@@ -465,7 +451,8 @@ void arm_control__1kHz(const unsigned long T, ARM_DATA* Data)
 
 	}
 
-
+	Data->Out.Current_Angle = current_angle;
+	Data->Out.Current_Velocity = current_velocity;
 	Data->Out.State = state;
 
 	SetMotor(direction, Speed);

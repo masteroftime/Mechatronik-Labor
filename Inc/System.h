@@ -58,6 +58,9 @@ typedef struct
 	float Controller_Out;
 	float Controller_Integral;
 	float Current_Velocity;
+	float EncoderSpeed10msFiltered;
+	float EncoderSpeedHardware;
+	float EncoderPosition;
 	float Current_Angle;
 	float Target_Velocity;
 	float Constant_Test_Data;

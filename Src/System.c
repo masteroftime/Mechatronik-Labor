@@ -37,7 +37,7 @@ void Update1kHz()
 	DMS_Update(T, &Dms);
 
 
-	SendTimer = (SendTimer + T)%(5*ms);
+	SendTimer = (SendTimer + T)%(2*ms);
 	if(SendTimer == 0)
 	{
 		OutputDataFrame.StartData = 0x12345678;
@@ -50,6 +50,9 @@ void Update1kHz()
 		OutputDataFrame.Target_Velocity = Arm.Out.Target_Velocity;
 		OutputDataFrame.Current_Angle = Arm.Out.Current_Angle;
 		OutputDataFrame.Current_Velocity = Arm.Out.Current_Velocity;
+		OutputDataFrame.EncoderSpeed10msFiltered = Arm.Out.EncoderSpeed10msFiltered;
+		OutputDataFrame.EncoderPosition = Arm.Out.EncoderPostionFloat;
+		OutputDataFrame.EncoderSpeedHardware = Arm.Out.SpeedHardware;
 		OutputDataFrame.Constant_Test_Data = 42;
 		OutputDataFrame.State = Arm.Out.State;
 		HAL_UART_Transmit_DMA(&huart2, &OutputDataFrame, sizeof(OutputDataFrame));

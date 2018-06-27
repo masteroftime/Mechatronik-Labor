@@ -63,11 +63,20 @@ typedef struct
 	float ShootSpeed;
 	uint32_t ShootCommand;
 	uint32_t TaraCommand;
-	uint32_t ResA;
-	uint32_t ResB;
+	uint32_t LedShootPosition;
+	uint32_t Color;
 	uint32_t ResC;
 }
 ControlFrame;
+
+typedef enum
+{
+	Init, Prepare, Accelerate, Break, Stop, Weight
+}Mode;
+
+typedef enum{
+	Neutral, Forward, Backward
+}Direction;
 
 ControlFrame InputControlFrame;
 //Functions, Variables
